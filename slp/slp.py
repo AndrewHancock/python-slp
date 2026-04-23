@@ -62,34 +62,46 @@ class Parser:
             return None
         return self._tokens[self._pos + look_ahead]
 
-    def _stmt(self) -> Stmt:
-        return self._assign_stmt() or self._print_stmt()
+    def _stmt(self) -> Optional[Stmt]:
+        stmt =  self._assign_stmt() or self._print_stmt()
+        if stmt:
+            if self._peek(0):
+                next_type, _ = self._peek(0)
+                if next_type == TokenType.SEMICOLON:
+                    return self._compound_stmt_rest(stmt)
+            return stmt
+        return None
 
 
-    def _exp(self) -> Exp:
-        return self._num_exp() or self._exp_list()
+    def _exp(self) -> Optional[Exp]:
+        return self._num()  or self._id()
+
+
+    def _compound_stmt_rest(self, stmt1) -> Optional[CompoundStmt]:
+        pos = self._pos
+        next_type, _ = self._peek(0)
+        if next_type == TokenType.SEMICOLON:
+            self._pos += 1
+            stmt2 = self._stmt()
+            if stmt1 and stmt2:
+                return CompoundStmt(stmt1=stmt1, stmt2=stmt2)
+        self._pos = pos
+        return None
 
     def _assign_stmt(self) -> Optional[AssignStmt]:
-        # If there are less than 3 tokens less, we can't parse an AssignStmt
-        if len(self._tokens) - self._pos < 3:
-            return None
-
         pos = self._pos
 
-        current_type, current_val = self._peek()
-        next_type, _ = self._peek(1)
-
-        if current_type == TokenType.ID and next_type == TokenType.ASSIGN:
-            identifier = current_val
-            self._pos += 2
+        identifier = self._id()
+        next_type, _ = self._peek(0)
+        if identifier and next_type == TokenType.ASSIGN:
+            self._pos += 1
             exp = self._exp()
-
             if exp:
                 return AssignStmt(identifier, exp)
         self._pos = pos
         return None
 
-    def _print_stmt(self) -> None:
+    def _print_stmt(self) -> Optional[PrintStmt]:
         pos = self._pos
         if self._peek(0) == (TokenType.ID, "print") and self._peek(1) == (TokenType.L_PAREN, None):
             self._pos += 2
@@ -100,7 +112,7 @@ class Parser:
         self._pos = pos
         return None
 
-    def _num_exp(self) -> Optional[NumExp]:
+    def _num(self) -> Optional[Num]:
         next_token = self._peek()
         if not next_token:
             return None
@@ -108,11 +120,19 @@ class Parser:
         token_type, value = next_token
         if token_type == TokenType.DIGITS:
             self._pos += 1
-            return NumExp(int(value))
+            return Num(int(value))
         else:
             return None
 
-    def _exp_list(self) -> Optional[ExpList]:
+    def _id(self) -> Optional[Id]:
+        next_type, next_value = self._peek(0)
+
+        if next_type == TokenType.ID:
+            self._pos +=1
+            return Id(next_value)
+        return None
+
+    def _exp_list(self) -> Optional[list[Exp]]:
         pos = self._pos
         exp = self._exp()
         if not exp:
@@ -126,6 +146,40 @@ class Parser:
                 self._pos = pos
                 return None
             result.append(exp)
-        return ExpList(result)
+        return result
 
 
+
+
+def eval(slp_str: str):
+    parser = Parser()
+    stmt = parser.parse(slp_str)
+    locals = {}
+    eval_stmt(stmt, locals)
+
+def eval_stmt(stmt: Stmt, locals: dict[str, int]):
+    match stmt:
+        case AssignStmt(identifier=ident, value=exp):
+            locals[ident.identifier] = eval_exp(exp, locals)
+        case PrintStmt(expr_list=expr_list):
+            strings = [str(eval_exp(exp, locals)) for exp in expr_list]
+            output = " ".join(strings)
+            print(output)
+        case CompoundStmt(stmt1=s1, stmt2=s2):
+            eval_stmt(s1, locals)
+            eval_stmt(s2, locals)
+
+
+
+def eval_exp(exp: Exp, locals: dict[str, int]) -> int:
+    match exp:
+        case Num(value=value):
+            return value
+        case Id(identifier=ident):
+            return locals[ident]
+        case _:
+            raise Exception("Unknown expression {}", exp)
+
+if __name__ == "__main__":
+    while (command := input("--> ")).lower() != "q":
+        eval(command)

@@ -1,6 +1,6 @@
 import unittest
 from slp.slp import get_tokens, Parser, TokenType
-from syntax_tree import PrintStmt, ExpList, NumExp, AssignStmt
+from syntax_tree import PrintStmt, Num, AssignStmt, Id
 
 
 class TestSlp(unittest.TestCase):
@@ -43,13 +43,13 @@ class TestSlp(unittest.TestCase):
         stmt = "i := 5"
         p = Parser()
         actual = p.parse(stmt)
-        expected = AssignStmt(identifier='i', value=NumExp(5))
+        expected = AssignStmt(identifier=Id('i'), value=Num(5))
         self.assertEqual(actual, expected)
 
     def test_parse_print(self):
         stmt = "print(1, 2, 3, 4)"
         p = Parser()
         actual = p.parse(stmt)
-        expected = PrintStmt(expr_list=ExpList(exp_list=[NumExp(value=1), NumExp(value=2), NumExp(value=3), NumExp(value=4)]))
+        expected = PrintStmt(expr_list=[Num(value=1), Num(value=2), Num(value=3), Num(value=4)])
         self.assertEqual(actual, expected)
 

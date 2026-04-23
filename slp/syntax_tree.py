@@ -11,29 +11,23 @@ class Stmt(ABC):
 
 
 @dataclass
-class Program:
-    stmts: list[Stmt]
-
+class CompoundStmt(Stmt):
+    stmt1: Stmt
+    stmt2: Stmt
 
 @dataclass
 class AssignStmt(Stmt):
-    identifier: str
+    identifier: Id
     value: Exp
 
-@dataclass()
+@dataclass
 class PrintStmt(Stmt):
-    expr_list: ExpList
+    expr_list: list[Exp]
 
 @dataclass
-class NumExp(Exp):
+class Num(Exp):
     value: int
 
-
 @dataclass
-class IdExp(Exp):
+class Id(Exp):
     identifier: str
-
-
-@dataclass
-class ExpList(Exp):
-    exp_list: list[Exp]
